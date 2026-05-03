@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AgriPod — Smart Greenhouse Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+<style>
+  :root {
+    --bg:          #0b110d;
+    --surface:     #101a12;
+    --card:        #152018;
+    --border:      #253d2c;
+    --terra:       #4a9e6a;
+    --terra-dim:   #2a6644;
+    --terra-lt:    #7dcca0;
+    --sand:        #a8c87a;
+    --sand-lt:     #c8e0a0;
+    --moss:        #3a7a58;
+    --moss-lt:     #6aaa88;
+    --sky:         #7aabbb;
+    --red:         #c45040;
+    --text:        #d8ead0;
+    --muted:       #6a8a72;
+    --label:       #3a5a42;
+    --amber:       #b8c84a;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 10% 0%,  #1a3a2533 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 90% 100%, #0a1e1222 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    background-size: 200px;
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .wrapper { position: relative; z-index: 1; max-width: 920px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+
+  /* ── header ── */
+  header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 3rem;
+    animation: fadeUp .6s ease both;
+  }
+
+  .logo-area { display: flex; align-items: center; gap: 1rem; }
+
+  .logo-icon {
+    width: 52px; height: 52px;
+    background: var(--terra-dim);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem;
+    box-shadow: 0 0 28px #4a9e6a30;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem; font-weight: 700;
+    letter-spacing: -0.02em; line-height: 1;
+  }
+  h1 span { color: var(--terra-lt); }
+
+  .subtitle { font-size: .8rem; color: var(--muted); margin-top: .3rem; letter-spacing: .06em; text-transform: uppercase; }
+
+  .status-pill {
+    display: flex; align-items: center; gap: .5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: .4rem .9rem;
+    font-size: .78rem; color: var(--muted);
+  }
+
+  .pulse {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--moss-lt);
+    box-shadow: 0 0 0 0 #6aaa8860;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 #6aaa8860; }
+    70%  { box-shadow: 0 0 0 7px #6aaa8800; }
+    100% { box-shadow: 0 0 0 0 #6aaa8800; }
+  }
+
+  .section-label {
+    font-size: .7rem; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--label); margin-bottom: 1rem; padding-left: .25rem;
+  }
+
+  /* ── plant selector ── */
+  .plant-selector-row {
+    display: flex; align-items: center; gap: .8rem;
+    margin-bottom: 1.5rem; flex-wrap: wrap;
+    animation: fadeUp .5s .05s ease both;
+  }
+
+  .plant-selector-label {
+    font-size: .7rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--label); margin-right: .2rem;
+  }
+
+  .plant-btn {
+    display: flex; align-items: center; gap: .5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: .45rem 1.1rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: .82rem; color: var(--muted);
+    cursor: pointer;
+    transition: border-color .2s, color .2s, background .2s, box-shadow .2s;
+  }
+  .plant-btn:hover { border-color: var(--terra); color: var(--text); }
+  .plant-btn.active {
+    background: var(--terra-dim);
+    border-color: var(--terra);
+    color: var(--terra-lt);
+    box-shadow: 0 0 16px #4a9e6a25;
+  }
+  .plant-btn .plant-emoji { font-size: 1rem; }
+
+  .switching-badge {
+    font-size: .68rem; color: var(--amber);
+    letter-spacing: .08em; text-transform: uppercase;
+    opacity: 0; transition: opacity .3s;
+    display: flex; align-items: center; gap: .35rem;
+  }
+  .switching-badge.visible { opacity: 1; }
+  .switching-badge::before {
+    content: '';
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--amber);
+    animation: pulse 1s infinite;
+  }
+
+  /* ── cards grid ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 640px) { .cards-grid { grid-template-columns: 1fr; } }
+
+  /* ── card ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.5rem 1.4rem 4rem;
+    position: relative; overflow: hidden;
+    transition: transform .2s, box-shadow .2s;
+    animation: fadeUp .6s ease both;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px #00000055; }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    width: 120px; height: 120px;
+    border-radius: 50%; filter: blur(50px);
+    top: -30px; right: -20px;
+    opacity: .3; pointer-events: none;
+  }
+  .card.temp::before  { background: var(--terra); }
+  .card.soil::before  { background: var(--moss-lt); }
+  .card.light::before { background: var(--sand); }
+
+  .card-icon { font-size: 1.4rem; margin-bottom: .9rem; display: block; }
+
+  .card-title {
+    font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: .4rem;
+  }
+
+  .card-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 2.8rem; font-weight: 500;
+    line-height: 1; margin-bottom: .25rem;
+    transition: color .4s;
+  }
+  .card.temp  .card-value { color: var(--terra-lt); }
+  .card.soil  .card-value { color: var(--moss-lt); }
+  .card.light .card-value { color: var(--sand-lt); }
+  .soil-word { font-size: 2.8rem !important; letter-spacing: .02em; }
+
+  .card-unit { font-size: .85rem; color: var(--muted); margin-left: .2rem; font-family: 'DM Mono', monospace; }
+
+  .card-status {
+    font-size: .8rem; font-weight: 500;
+    margin-top: .6rem; padding: .25rem .7rem;
+    border-radius: 99px; display: inline-block;
+    background: #ffffff0d; border: 1px solid #ffffff15;
+  }
+
+  .actuator-badge {
+    position: absolute; bottom: 1.2rem; right: 1.2rem;
+    font-size: .65rem; letter-spacing: .1em; text-transform: uppercase;
+    padding: .2rem .55rem;
+    border-radius: 99px; border: 1px solid currentColor;
+    transition: color .3s, border-color .3s;
+  }
+  .actuator-badge.on  { color: var(--moss-lt); border-color: var(--moss-lt); opacity: 1; animation: blink 2s ease infinite; }
+  .actuator-badge.off { color: var(--muted); border-color: var(--muted); animation: none; opacity: .75; }
+
+  @keyframes blink {
+    0%,100% { opacity: .75; }
+    50%      { opacity: 1; }
+  }
+
+  .bar-track { height: 4px; background: var(--border); border-radius: 99px; margin-top: 1rem; overflow: hidden; }
+  .bar-fill  { height: 100%; border-radius: 99px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+  .card.temp  .bar-fill { background: var(--terra-lt); }
+  .card.soil  .bar-fill { background: var(--moss-lt); }
+  .card.light .bar-fill { background: var(--sand); }
+
+  /* ── actuator status panel ── */
+  .actuator-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    animation: fadeUp .6s .2s ease both;
+  }
+
+  .actuator-panel-label {
+    font-size: .7rem; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--label); flex-shrink: 0; margin-right: .4rem;
+  }
+
+  .actuator-chip {
+    display: flex; align-items: center; gap: .5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: .35rem .9rem;
+    font-size: .78rem; color: var(--muted);
+    transition: border-color .3s, color .3s, background .3s;
+  }
+  .actuator-chip.on {
+    border-color: var(--moss-lt);
+    color: var(--moss-lt);
+    background: #6aaa8812;
+  }
+
+  .chip-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--muted); transition: background .3s; flex-shrink: 0;
+  }
+  .actuator-chip.on .chip-dot {
+    background: var(--moss-lt);
+    box-shadow: 0 0 6px #6aaa8880;
+    animation: pulse 1.5s infinite;
+  }
+
+  /* ── log panel ── */
+  .log-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    animation: fadeUp .6s .3s ease both;
+  }
+
+  .log-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; }
+  .log-title { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 600; letter-spacing: -.01em; }
+  .log-list { list-style: none; display: flex; flex-direction: column; gap: .55rem; }
+  .log-entry { display: flex; align-items: center; gap: .75rem; font-size: .8rem; color: var(--muted); animation: fadeUp .3s ease both; }
+  .log-dot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; }
+  .log-dot.terra { background: var(--terra-lt); }
+  .log-dot.moss  { background: var(--moss-lt); }
+  .log-dot.sand  { background: var(--sand); }
+  .log-dot.red   { background: var(--red); }
+  .log-dot.amber { background: var(--amber); }
+  .log-dot.green { background: var(--moss-lt); }
+  .log-dot.sky   { background: var(--sand); }
+  .log-time { font-family: 'DM Mono', monospace; font-size: .7rem; color: var(--label); flex-shrink: 0; width: 52px; }
+
+  /* ══════════════════════════════
+     ABOUT SECTION
+  ══════════════════════════════ */
+  .about-section { margin-top: 5rem; }
+
+  .about-divider {
+    display: flex; align-items: center; gap: 1.5rem; margin-bottom: 3.5rem;
+  }
+  .about-divider::before, .about-divider::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(to right, transparent, var(--border));
+  }
+  .about-divider::after { background: linear-gradient(to left, transparent, var(--border)); }
+  .about-divider-inner {
+    display: flex; align-items: center; gap: .7rem;
+    font-family: 'Playfair Display', serif;
+    font-size: .85rem; color: var(--muted);
+    letter-spacing: .08em; text-transform: uppercase; white-space: nowrap;
+  }
+
+  .mission-block {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+    margin-bottom: 3.5rem; align-items: start;
+  }
+  @media (max-width: 640px) { .mission-block { grid-template-columns: 1fr; } }
+
+  .about-eyebrow {
+    font-size: .68rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--terra); margin-bottom: .8rem;
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .about-eyebrow::after { content: ''; flex: 1; height: 1px; background: var(--terra-dim); max-width: 40px; }
+
+  .about-h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem; font-weight: 700;
+    line-height: 1.15; letter-spacing: -.02em; margin-bottom: 1.2rem;
+  }
+  .about-h2 em { font-style: italic; color: var(--terra-lt); }
+
+  .about-p { font-size: .88rem; line-height: 1.75; color: var(--muted); margin-bottom: .9rem; }
+
+  .stat-row { display: flex; gap: .8rem; flex-wrap: wrap; margin-top: 1.4rem; }
+  .stat-pill { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: .6rem 1rem; text-align: center; }
+  .stat-pill-num { font-family: 'DM Mono', monospace; font-size: 1.4rem; color: var(--terra-lt); display: block; line-height: 1; }
+  .stat-pill-lbl { font-size: .65rem; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-top: .3rem; display: block; }
+
+  .mission-visual {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; overflow: hidden; position: relative;
+    aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center;
+  }
+  .mission-visual-placeholder {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .7rem;
+    background: radial-gradient(ellipse at 60% 30%, #2a664420, transparent 60%);
+  }
+  .greenhouse-svg { opacity: .7; }
+  .placeholder-label { font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--label); margin-top: .4rem; }
+  .mission-visual::after {
+    content: ''; position: absolute; bottom: 0; right: 0;
+    width: 80px; height: 80px;
+    background: radial-gradient(ellipse at 100% 100%, #4a9e6a22, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ── timeline ── */
+  .timeline-section { margin-bottom: 3.5rem; }
+  .timeline-heading {
+    font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 600;
+    margin-bottom: 2rem; display: flex; align-items: center; gap: 1rem;
+  }
+  .timeline-heading::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .timeline { position: relative; padding-left: 2.2rem; }
+  .timeline::before {
+    content: ''; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 2px;
+    background: linear-gradient(to bottom, var(--terra-dim), var(--border), transparent);
+  }
+
+  .timeline-item {
+    position: relative; margin-bottom: 2rem;
+    opacity: 0; transform: translateX(-12px);
+    transition: opacity .5s ease, transform .5s ease;
+  }
+  .timeline-item.visible { opacity: 1; transform: translateX(0); }
+
+  .timeline-dot {
+    position: absolute; left: -2.2rem; top: .3rem;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--card); border: 2px solid var(--terra-dim);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .timeline-dot::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--terra); }
+  .timeline-item:hover .timeline-dot { border-color: var(--terra); }
+  .timeline-item:hover .timeline-dot::after { background: var(--terra-lt); }
+
+  .timeline-phase { font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; color: var(--terra); margin-bottom: .3rem; }
+  .timeline-title { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 600; margin-bottom: .4rem; color: var(--text); }
+  .timeline-desc { font-size: .82rem; color: var(--muted); line-height: 1.65; }
+
+  /* ── team ── */
+  .team-section { margin-bottom: 2rem; }
+  .team-heading {
+    font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 600;
+    margin-bottom: 2rem; display: flex; align-items: center; gap: 1rem;
+  }
+  .team-heading::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .team-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.1rem; }
+  @media (max-width: 700px) { .team-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 400px) { .team-grid { grid-template-columns: 1fr; } }
+
+  .team-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 0rem 1rem 1.5rem;
+    text-align: center; transition: transform .2s, box-shadow .2s, border-color .2s;
+    cursor: default; position: relative; overflow: hidden;
+  }
+  .team-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(to right, var(--terra-dim), var(--terra-lt), var(--terra-dim));
+    opacity: 0; transition: opacity .25s;
+  }
+  .team-card:hover { transform: translateY(-4px); box-shadow: 0 14px 36px #00000050; border-color: var(--terra-dim); }
+  .team-card:hover::before { opacity: 1; }
+
+  .avatar {
+    width: 68px; height: 68px; border-radius: 50%;
+    margin: 0 auto 1rem; background: var(--surface); border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--sand);
+    position: relative; overflow: hidden; transition: border-color .2s;
+  }
+  .team-card:hover .avatar { border-color: var(--terra-dim); }
+  .avatar::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 30% 30%, #ffffff08, transparent 70%); pointer-events: none; }
+
+  .team-name { font-family: 'Playfair Display', serif; font-size: .95rem; font-weight: 600; margin-bottom: .25rem; }
+  .team-role { font-size: .7rem; color: var(--terra); letter-spacing: .08em; text-transform: uppercase; }
+  .photo-note { margin-top: .7rem; font-size: .65rem; color: var(--label); letter-spacing: .05em; }
+
+  /* ── footer ── */
+  footer { margin-top: 3rem; text-align: center; font-size: .72rem; color: var(--label); letter-spacing: .04em; }
+
+  /* ── animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .card:nth-child(1) { animation-delay: .05s; }
+  .card:nth-child(2) { animation-delay: .15s; }
+  .card:nth-child(3) { animation-delay: .25s; }
+
+  @keyframes flash {
+    0%,100% { opacity: 1; }
+    50%      { opacity: .4; }
+  }
+  .flashing { animation: flash .4s ease; }
+
+  .scroll-reveal { opacity: 0; transform: translateY(22px); transition: opacity .6s ease, transform .6s ease; }
+  .scroll-reveal.visible { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- ── HEADER ── -->
+  <header>
+    <div class="logo-area">
+      <div class="logo-icon">🌿</div>
+      <div>
+        <h1>Agri<span>Pod</span></h1>
+        <div class="subtitle">Smart Greenhouse Monitor</div>
+      </div>
+    </div>
+    <div class="status-pill">
+      <div class="pulse" id="conn-pulse"></div>
+      <span id="conn-label">Connecting…</span>
+    </div>
+  </header>
+
+  <!-- ── PLANT SELECTOR ── -->
+  <div class="section-label">Active Plant</div>
+  <div class="plant-selector-row">
+    <span class="plant-selector-label">Switch to →</span>
+    <button class="plant-btn active" data-plant="spinach">
+      <span class="plant-emoji">🥬</span> Spinach
+    </button>
+    <button class="plant-btn" data-plant="strawberry">
+      <span class="plant-emoji">🍓</span> Strawberry
+    </button>
+    <button class="plant-btn" data-plant="arugula">
+      <span class="plant-emoji">🌿</span> Arugula
+    </button>
+    <span class="switching-badge" id="switching-badge">Updating ESP32…</span>
+  </div>
+
+  <!-- ── SENSOR CARDS ── -->
+  <div class="section-label">Live Readings</div>
+  <div class="cards-grid">
+
+    <div class="card temp">
+      <span class="card-icon">🌡️</span>
+      <div class="card-title">Temperature</div>
+      <div class="card-value" id="temp-val">—<span class="card-unit">°C</span></div>
+      <div class="card-status" id="temp-status">Waiting…</div>
+      <div class="bar-track"><div class="bar-fill" id="temp-bar" style="width:0%"></div></div>
+      <div class="actuator-badge off" id="fan-badge">Fan OFF</div>
+    </div>
+
+    <div class="card soil">
+      <span class="card-icon">🌱</span>
+      <div class="card-title">Soil Moisture</div>
+      <div class="card-value soil-word" id="soil-val">—</div>
+      <div class="card-status" id="soil-status">Waiting…</div>
+      <div class="bar-track"><div class="bar-fill" id="soil-bar" style="width:0%"></div></div>
+      <div class="actuator-badge off" id="valve-badge">Valve OFF</div>
+    </div>
+
+    <div class="card light">
+      <span class="card-icon">💡</span>
+      <div class="card-title">Light Intensity</div>
+      <div class="card-value" id="light-val">—<span class="card-unit">lx</span></div>
+      <div class="card-status" id="light-status">Waiting…</div>
+      <div class="bar-track"><div class="bar-fill" id="light-bar" style="width:0%"></div></div>
+      <div class="actuator-badge off" id="led-badge">LED OFF</div>
+    </div>
+
+  </div>
+
+  <!-- ── ACTUATOR STATUS PANEL ── -->
+  <div class="actuator-panel">
+    <span class="actuator-panel-label">Actuators</span>
+    <div class="actuator-chip off" id="chip-fan">
+      <div class="chip-dot"></div>
+      🌀 Fan — <span id="chip-fan-val">OFF</span>
+    </div>
+    <div class="actuator-chip off" id="chip-valve">
+      <div class="chip-dot"></div>
+      💧 Valve — <span id="chip-valve-val">OFF</span>
+    </div>
+    <div class="actuator-chip off" id="chip-led">
+      <div class="chip-dot"></div>
+      💜 LED — <span id="chip-led-val">OFF</span>
+    </div>
+  </div>
+
+  <!-- ── LOG PANEL ── -->
+  <div class="log-panel">
+    <div class="log-header">
+      <div class="log-title">System Log</div>
+      <div style="font-size:.72rem;color:var(--muted)">Last 6 events</div>
+    </div>
+    <ul class="log-list" id="log-list">
+      <li class="log-entry">
+        <div class="log-dot sand"></div>
+        <span class="log-time">--:--</span>
+        <span>Waiting for Firebase connection…</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- ════════════════════════════════════
+       ABOUT SECTION
+  ═════════════════════════════════════ -->
+  <div class="about-section">
+
+    <div class="about-divider">
+      <div class="about-divider-inner"><span>🌾</span> About the Project</div>
+    </div>
+
+    <!-- mission -->
+    <div class="mission-block scroll-reveal">
+      <div class="mission-text-col">
+        <div class="about-eyebrow">Our Mission</div>
+        <h2 class="about-h2">Growing more<br>with <em>less</em>.</h2>
+        <p class="about-p">
+          Egypt feeds over 105 million people — yet faces mounting pressure from water scarcity and harsh climate conditions. Conventional farming methods are struggling to keep pace.
+        </p>
+        <p class="about-p">
+          AgriPod proposes an automated, closed-loop feedback control system for smart greenhouse production. By continuously monitoring temperature, soil moisture, and light intensity, the system deploys targeted actuators to keep all three parameters within optimal ranges — entirely without human intervention.
+        </p>
+        <p class="about-p">
+          Built from recycled materials and designed to run 6+ hours autonomously, AgriPod is a scalable, cost-effective answer to food insecurity — replicable across Egypt and developing nations worldwide.
+        </p>
+        <div class="stat-row">
+          <div class="stat-pill"><span class="stat-pill-num">3</span><span class="stat-pill-lbl">Sensors</span></div>
+          <div class="stat-pill"><span class="stat-pill-num">3</span><span class="stat-pill-lbl">Actuators</span></div>
+          <div class="stat-pill"><span class="stat-pill-num">6h+</span><span class="stat-pill-lbl">Autonomous</span></div>
+          <div class="stat-pill"><span class="stat-pill-num">3</span><span class="stat-pill-lbl">Plant Species</span></div>
+        </div>
+      </div>
+
+      <div class="mission-visual">
+        <div class="mission-visual-placeholder">
+          <svg class="greenhouse-svg" width="110" height="110" viewBox="0 0 110 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="12" y="52" width="86" height="48" rx="4" fill="#253d2c" stroke="#3a5a42" stroke-width="1.5"/>
+            <path d="M8 54 L55 14 L102 54" stroke="#2a6644" stroke-width="2" fill="none" stroke-linejoin="round"/>
+            <rect x="42" y="72" width="26" height="28" rx="3" fill="#152018" stroke="#253d2c" stroke-width="1.2"/>
+            <rect x="18" y="60" width="18" height="14" rx="2" fill="#7aabbb22" stroke="#253d2c" stroke-width="1"/>
+            <rect x="74" y="60" width="18" height="14" rx="2" fill="#7aabbb22" stroke="#253d2c" stroke-width="1"/>
+            <line x1="55" y1="100" x2="55" y2="80" stroke="#3a7a58" stroke-width="2"/>
+            <ellipse cx="55" cy="76" rx="9" ry="7" fill="#3a7a58" opacity=".8"/>
+            <ellipse cx="48" cy="81" rx="6" ry="5" fill="#2a5a40" opacity=".7"/>
+            <ellipse cx="62" cy="81" rx="6" ry="5" fill="#2a5a40" opacity=".7"/>
+            <circle cx="55" cy="28" r="7" fill="#b8c84a" opacity=".4"/>
+            <circle cx="55" cy="28" r="4" fill="#b8c84a" opacity=".7"/>
+            <circle cx="30" cy="90" r="2" fill="#7aabbb" opacity=".5"/>
+            <circle cx="80" cy="85" r="1.5" fill="#7aabbb" opacity=".4"/>
+          </svg>
+          <div class="placeholder-label">Prototype Photo</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- timeline -->
+    <div class="timeline-section scroll-reveal">
+      <div class="timeline-heading">How We Built It</div>
+      <div class="timeline">
+
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-phase">Phase 1 — Pre-Construction</div>
+          <div class="timeline-title">Research & 3D Design</div>
+          <div class="timeline-desc">Defined the three core parameters. Created a 3D model of the prototype to finalize structural decisions — greenhouse material, soil type, sensor selection, and spatial layout.</div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-phase">Phase 2 — Prototype Build</div>
+          <div class="timeline-title">Constructing the Greenhouse</div>
+          <div class="timeline-desc">Recycled a glass cubic container as the greenhouse body. Installed the DC fan, layered cork + mesh + peat moss, glued the LED strip inside, and assembled the solenoid valve with a simulated drip-irrigation system fed by a mounted 600ml bottle.</div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-phase">Phase 3 — Electronics</div>
+          <div class="timeline-title">Wiring the Circuit</div>
+          <div class="timeline-desc">Connected an ESP32 to a breadboard with the DHT22, LDR, and soil moisture sensors. Wired three relays between the 12V power supply and the actuators, allowing the ESP32 to safely control high-voltage components without damage.</div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-phase">Phase 4 — Calibration</div>
+          <div class="timeline-title">Sensor Accuracy & Tuning</div>
+          <div class="timeline-desc">Cross-referenced DHT22 readings with a weather app. Calibrated the LDR with a luxmeter in the physics lab. Calibrated the soil sensor in the geology lab using air (dry) and water (wet) reference points, then mapped readings to a 0–100% scale.</div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-phase">Phase 5 — Testing</div>
+          <div class="timeline-title">Real-World Validation</div>
+          <div class="timeline-desc">Ran 6-hour autonomous tests across three plant species. Recorded readings at 9:00, 14:00, and 19:00 over five consecutive days outdoors. Applied three deliberate deviations per parameter and measured recovery time. System successfully maintained all three parameters simultaneously and in real time.</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- team -->
+    <div class="team-section scroll-reveal">
+      <div class="team-heading">The Team</div>
+      <div class="team-grid">
+        <div class="team-card">
+          <img src="yusuf.png" width="150">
+          <div class="team-name">Yusuf Allam</div>
+          <div class="team-role">Team Member</div>
+        </div>
+        <div class="team-card">
+          <img src="mahmoud.png" width="120">
+          <div class="team-name">Mahmoud Talaat</div>
+          <div class="team-role">Team Member</div>
+        </div>
+        <div class="team-card">
+          <img src="ammar.png" width="155">
+          <div class="team-name">Ammar Mohammed</div>
+          <div class="team-role">Team Member</div>
+        </div>
+        <div class="team-card">
+          <img src="ezz.png" width="180">
+          <div class="team-name">Ezz Ahmed</div>
+          <div class="team-role">Team Member</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /about-section -->
+
+  <footer>AgriPod v1.0 &nbsp;·&nbsp; ESP32 + Firebase &nbsp;·&nbsp; School Capstone Project</footer>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     FIREBASE + DASHBOARD LOGIC
+═══════════════════════════════════════════════════════════ -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAwGn0bDYfqJ9QqHXPYmw41OjDRx3VxGx8",
+    authDomain: "agripod-92886.firebaseapp.com",
+    databaseURL: "https://agripod-92886-default-rtdb.firebaseio.com",
+    projectId: "agripod-92886",
+    storageBucket: "agripod-92886.firebasestorage.app",
+    messagingSenderId: "1081515891189",
+    appId: "1:1081515891189:web:daa7c8bebaa22e09df28bc"
+  };
+
+  // Per-plant thresholds — used for website display logic only
+  // (status labels, bar scaling). All actuator decisions are made on the ESP32.
+  const PLANT_PROFILES = {
+    spinach:    { tempMax: 15, luxMin: 7500,  luxMax: 12500 },
+    strawberry: { tempMax: 24, luxMin: 5000,  luxMax: 12500 },
+    arugula:    { tempMax: 22, luxMin: 10000, luxMax: 20000 },
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getDatabase(app);
+
+  const $ = id => document.getElementById(id);
+  const logList = $('log-list');
+
+  let logEntries  = [];
+  let activePlant = 'spinach';
+  let switchTimer = null;
+
+  // ── helpers ───────────────────────────────────────────
+  function addLog(color, msg) {
+    const t = new Date().toTimeString().slice(0, 5);
+    logEntries.unshift({ color, t, msg });
+    if (logEntries.length > 6) logEntries.pop();
+    logList.innerHTML = logEntries.map(e => `
+      <li class="log-entry">
+        <div class="log-dot ${e.color}"></div>
+        <span class="log-time">${e.t}</span>
+        <span>${e.msg}</span>
+      </li>`).join('');
+  }
+
+  function flash(el) {
+    el.classList.remove('flashing');
+    void el.offsetWidth;
+    el.classList.add('flashing');
+  }
+
+  function setConnected(ok) {
+    $('conn-pulse').style.background = ok ? 'var(--moss-lt)' : 'var(--red)';
+    $('conn-label').textContent       = ok ? 'Live' : 'Disconnected';
+  }
+
+  // Updates both the card corner badge and the actuator panel chip
+  function setActuator(badgeId, chipId, chipValId, on, label) {
+    const badge = $(badgeId);
+    badge.textContent = label + (on ? ' ON' : ' OFF');
+    badge.className   = 'actuator-badge ' + (on ? 'on' : 'off');
+
+    const chip = $(chipId);
+    chip.className = 'actuator-chip ' + (on ? 'on' : 'off');
+    $(chipValId).textContent = on ? 'ON' : 'OFF';
+  }
+
+  // ── plant selector ────────────────────────────────────
+  const plantBtns   = document.querySelectorAll('.plant-btn');
+  const switchBadge = $('switching-badge');
+
+  plantBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const plant = btn.dataset.plant;
+      if (plant === activePlant) return;
+
+      plantBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activePlant = plant;
+
+      switchBadge.classList.add('visible');
+      if (switchTimer) clearTimeout(switchTimer);
+      switchTimer = setTimeout(() => switchBadge.classList.remove('visible'), 4000);
+
+      // Write to Firebase → ESP32 reads it next loop iteration
+      set(ref(db, '/agripod/plant'), plant)
+        .then(()  => addLog('amber', `Plant switched to: ${plant}`))
+        .catch(err => {
+          addLog('red', `Plant switch failed: ${err.message}`);
+          switchBadge.classList.remove('visible');
+        });
+    });
+  });
+
+  // Keep button state in sync if Firebase value changes externally
+  onValue(ref(db, '/agripod/plant'), snap => {
+    const val = snap.val();
+    if (!val) return;
+    const p = val.toLowerCase();
+    if (p !== activePlant) {
+      activePlant = p;
+      plantBtns.forEach(b => b.classList.toggle('active', b.dataset.plant === p));
+    }
+  });
+
+  // ── temperature ───────────────────────────────────────
+  onValue(ref(db, '/agripod/temp'), snap => {
+    setConnected(true);
+    const val = snap.val();
+    if (val === null) return;
+    const profile = PLANT_PROFILES[activePlant] || PLANT_PROFILES.spinach;
+    const el = $('temp-val');
+    el.innerHTML = `${val.toFixed(1)}<span class="card-unit">°C</span>`;
+    flash(el);
+    $('temp-bar').style.width = Math.min(100, (val / 50) * 100) + '%';
+    const hot  = val > profile.tempMax;
+    const warm = val > profile.tempMax - 5;
+    $('temp-status').textContent = hot ? '🔥 Too Hot' : warm ? '☀️ Warm' : '✅ Optimal';
+    addLog('terra', `Temp: ${val.toFixed(1)}°C`);
+  }, err => { setConnected(false); addLog('red', 'Temp error: ' + err.message); });
+
+  // ── soil moisture ─────────────────────────────────────
+  // ESP32 sends the string "Dry", "Optimal", or "Too Moist"
+  onValue(ref(db, '/agripod/soilmoisture'), snap => {
+    setConnected(true);
+    const val = snap.val();
+    if (val === null) return;
+    const el = $('soil-val');
+    el.textContent = val;
+    flash(el);
+    // Visual bar: rough indicator based on state word
+    const barPct = val === 'Dry' ? 20 : val === 'Optimal' ? 60 : 90;
+    $('soil-bar').style.width = barPct + '%';
+    const emoji = val === 'Dry' ? '🏜️' : val === 'Too Moist' ? '💧' : '✅';
+    $('soil-status').textContent = `${emoji} ${val}`;
+    addLog('moss', `Soil: ${val}`);
+  }, err => { setConnected(false); addLog('red', 'Soil error: ' + err.message); });
+
+  // ── light intensity ───────────────────────────────────
+  onValue(ref(db, '/agripod/light'), snap => {
+    setConnected(true);
+    const val = snap.val();
+    if (val === null) return;
+    const profile = PLANT_PROFILES[activePlant] || PLANT_PROFILES.spinach;
+    const el = $('light-val');
+    el.innerHTML = `${Math.round(val)}<span class="card-unit">lx</span>`;
+    flash(el);
+    $('light-bar').style.width = Math.min(100, (val / profile.luxMax) * 100) + '%';
+    const dim    = val < profile.luxMin;
+    const bright = val > profile.luxMax * .85;
+    $('light-status').textContent = dim ? '🌑 Too Dark' : bright ? '☀️ Bright' : '✅ Adequate';
+    addLog('sand', `Light: ${Math.round(val)} lx`);
+  }, err => { setConnected(false); addLog('red', 'Light error: ' + err.message); });
+
+  // ── actuator statuses — read directly from Firebase ───
+  onValue(ref(db, '/agripod/fan'), snap => {
+    const val = snap.val();
+    if (val === null) return;
+    setActuator('fan-badge', 'chip-fan', 'chip-fan-val', val === 'ON', 'Fan');
+    addLog('terra', `Fan: ${val}`);
+  });
+
+  onValue(ref(db, '/agripod/valve'), snap => {
+    const val = snap.val();
+    if (val === null) return;
+    setActuator('valve-badge', 'chip-valve', 'chip-valve-val', val === 'ON', 'Valve');
+    addLog('moss', `Valve: ${val}`);
+  });
+
+  onValue(ref(db, '/agripod/led'), snap => {
+    const val = snap.val();
+    if (val === null) return;
+    setActuator('led-badge', 'chip-led', 'chip-led-val', val === 'ON', 'LED');
+    addLog('sand', `LED: ${val}`);
+  });
+
+</script>
+
+<!-- scroll reveal -->
+<script>
+  const revealEls     = document.querySelectorAll('.scroll-reveal');
+  const timelineItems = document.querySelectorAll('.timeline-item');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  revealEls.forEach(el => observer.observe(el));
+
+  const tlObserver = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); tlObserver.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  timelineItems.forEach((el, i) => { el.style.transitionDelay = (i * 0.1) + 's'; tlObserver.observe(el); });
+</script>
+
+</body>
+</html>
